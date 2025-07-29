@@ -16,7 +16,7 @@ public class GameManager : MonoBehaviour
     
     private int currentTeam = 0;
     private int currentRobotIndex = 0;
-    private RobotUnit currentRobot;
+    public RobotUnit currentRobot;
 
     public TMP_Text uiTurnText, uiActionText, uiTimerText;
 
@@ -94,6 +94,7 @@ public class GameManager : MonoBehaviour
         currentRobot = GetCurrentTeam()[currentRobotIndex];
         currentRobot.ResetActions();
         UpdateUI();
+        Camera.main.GetComponent<CameraController>().HandleFocusOnRobot();
     }
 
     public void EndTurnEarly()
@@ -113,7 +114,7 @@ public class GameManager : MonoBehaviour
         RobotUnit current = GetCurrentRobot();
         if (current != null)
         {
-            Debug.Log($"Robot {current.name} forcibly skipped.");
+            //Debug.Log($"Robot {current.name} forcibly skipped.");
             current.isActive = false;
         }
         TryAdvanceTurn();
@@ -122,12 +123,14 @@ public class GameManager : MonoBehaviour
     private void TryAdvanceTurn()
     {
         RobotUnit[] team = GetCurrentTeam();
-        int startIdx = currentRobotIndex;
         int count = team.Length;
+
+        // Start from the *next* robot
+        int nextIndex = (currentRobotIndex + 1) % count;
 
         for (int i = 0; i < count; i++)
         {
-            int idx = (startIdx + i) % count;
+            int idx = (nextIndex + i) % count;
             if (team[idx].isActive)
             {
                 currentRobotIndex = idx;
@@ -156,6 +159,7 @@ public class GameManager : MonoBehaviour
         Debug.Log("Game Over — No active robots remaining in either team.");
         // TODO: Trigger Game Over UI
     }
+
 
     public RobotUnit[] GetCurrentTeam()
     {
@@ -229,7 +233,7 @@ public class GameManager : MonoBehaviour
 
     public Tile GetTileAtGridPos(Vector2Int pos)
     {
-        foreach (var tile in FindObjectsOfType<Tile>())
+        foreach (var tile in FindObjectsByType<Tile>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
         {
             if (tile.GridPos == pos)
                 return tile;
@@ -237,4 +241,9 @@ public class GameManager : MonoBehaviour
         return null;
     }
 
+    public bool IsBlocked(Vector2Int pos)
+    {
+        // Block if there's a robot on it or outside bounds
+        return GetRobotAtGridPos(pos) != null;
+    }
 }

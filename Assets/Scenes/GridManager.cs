@@ -6,6 +6,7 @@ public class GridManager : MonoBehaviour
     public static GridManager Instance;
 
     private Dictionary<Vector2Int, Tile> gridTiles = new Dictionary<Vector2Int, Tile>();
+    public HashSet<Vector2Int> reachableMoveTiles = new HashSet<Vector2Int>();
 
     private void Awake()
     {
@@ -21,7 +22,7 @@ public class GridManager : MonoBehaviour
     void CacheTiles()
     {
         gridTiles.Clear();
-        Tile[] tiles = FindObjectsOfType<Tile>();
+        Tile[] tiles = FindObjectsByType<Tile>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         foreach (var tile in tiles)
         {
             gridTiles[tile.GridPos] = tile;

@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 public class PlayerInput : MonoBehaviour
 {
@@ -6,6 +7,7 @@ public class PlayerInput : MonoBehaviour
     private enum ActionType { None, Move, Attack, Skill }
     private ActionType selectedAction = ActionType.None;
 
+    
 
     bool IsRobotDone(RobotUnit robot)
     {
@@ -22,7 +24,7 @@ public class PlayerInput : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            Debug.Log("Manual skip turn.");
+            //Debug.Log("Manual skip turn.");
             GameManager.Instance.ForceSkipTurn();
             ClearAllHighlights(); 
             selectedAction = ActionType.None;
@@ -93,20 +95,48 @@ public class PlayerInput : MonoBehaviour
         var robot = GameManager.Instance.GetCurrentRobot();
         int dist = Mathf.Abs(robot.gridPos.x - targetPos.x) + Mathf.Abs(robot.gridPos.y - targetPos.y);
         Debug.Log($"Trying {selectedAction} to {targetPos} | Dist: {dist}");
+
         switch (selectedAction)
         {
             case ActionType.Move:
                 Debug.Log("Move triggered");
-                if (dist <= 3 && robot.canMove)
+
+                // Prevent moving onto another robot
+                if (GameManager.Instance.GetRobotAtGridPos(targetPos) != null)
                 {
-                    robot.MoveTo(targetPos);
+                    Debug.LogWarning("❌ Cannot move to a tile occupied by another robot!");
+                    ClearAllHighlights();
+                    return;
                 }
+
+                if (robot.canMove)
+                {
+                    HashSet<Vector2Int> allowedTiles = new HashSet<Vector2Int>();
+                    foreach (var tile in FindObjectsByType<Tile>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                    {
+                        if (tile.isInteractable)
+                            allowedTiles.Add(tile.GridPos);
+                    }
+
+                    List<Vector2Int> path = AStarPathfinder.FindPath(robot.gridPos, targetPos, allowedTiles);
+                    if (path == null || path.Count <= 1)
+                    {
+                        Debug.Log("❌ No valid path to target");
+                        ClearAllHighlights();
+                        return;
+                    }
+
+
+                    robot.MoveTo(targetPos, allowedTiles);
+                    
+                    //Camera.main.GetComponent<CameraController>().HandleFocusOnRobot();
+                }
+
                 ClearAllHighlights();
                 break;
+
             case ActionType.Attack:
                 Debug.Log("Attack triggered");
-
-                // Check if there's a robot on the clicked tile
                 RobotUnit target = GameManager.Instance.GetRobotAtGridPos(targetPos);
                 if (target != null && target.teamId != robot.teamId && robot.canAttack)
                 {
@@ -115,6 +145,7 @@ public class PlayerInput : MonoBehaviour
                 }
                 ClearAllHighlights();
                 break;
+
             case ActionType.Skill:
                 Debug.Log("Skill triggered");
                 if (dist <= 2 && robot.canSkill && robot.energy >= 3)
@@ -128,14 +159,13 @@ public class PlayerInput : MonoBehaviour
 
         selectedAction = ActionType.None;
 
-        // After the switch-case for executing the action
         if (IsRobotDone(robot))
         {
-            GameManager.Instance.EndTurnEarly(); 
+            GameManager.Instance.EndTurnEarly();
         }
-
     }
 
+    
     void HighlightTiles(ActionType action)
     {
         ClearAllHighlights();
@@ -158,23 +188,63 @@ public class PlayerInput : MonoBehaviour
             _ => 0
         };
 
-        Color highlightColor = isUsed
-            ? Color.gray 
-            : action switch
-            {
-                ActionType.Move => Color.cyan,
-                ActionType.Attack => Color.red,
-                ActionType.Skill => new Color(1f, 0.5f, 0f),
-                _ => Color.white
-            };
-
-        foreach (var tile in FindObjectsOfType<Tile>())
+        var reachable = new HashSet<Vector2Int>();
+        foreach (var tile in FindObjectsByType<Tile>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
         {
             int dist = Mathf.Abs(tile.GridPos.x - robot.gridPos.x) + Mathf.Abs(tile.GridPos.y - robot.gridPos.y);
+
             if (dist <= range)
             {
-                tile.Highlight(highlightColor);
-                tile.SetInteractable(!isUsed); // Only allow clicks if action is not used
+                if (isUsed)
+                {
+                    tile.Highlight(Color.gray);
+                    tile.SetInteractable(false);
+                }
+                else
+                {
+                    switch (action)
+                    {
+                        case ActionType.Move:
+                            bool isBlocked = GameManager.Instance.GetRobotAtGridPos(tile.GridPos) != null;
+                            Color moveColor = isBlocked ? Color.gray : Color.cyan;
+                            tile.Highlight(moveColor);
+                            tile.SetInteractable(!isBlocked);
+                            if (!isBlocked) reachable.Add(tile.GridPos);
+                            break;
+
+                        case ActionType.Attack:
+                            {
+                                RobotUnit target = GameManager.Instance.GetRobotAtGridPos(tile.GridPos);
+                                if (target != null && target.teamId != robot.teamId)
+                                {
+                                    tile.Highlight(Color.green);
+                                    tile.SetInteractable(true);
+                                }
+                                else
+                                {
+                                    tile.Highlight(Color.red);
+                                    tile.SetInteractable(false);
+                                }
+                                break;
+                            }
+
+                        case ActionType.Skill:
+                            {
+                                RobotUnit target = GameManager.Instance.GetRobotAtGridPos(tile.GridPos);
+                                if (target != null && target.teamId != robot.teamId)
+                                {
+                                    tile.Highlight(new Color(1f, 0.5f, 0f)); // orange
+                                    tile.SetInteractable(true);
+                                }
+                                else
+                                {
+                                    tile.Highlight(new Color(1f, 0.5f, 0f, 0.3f)); // lighter orange or semi-transparent
+                                    tile.SetInteractable(false);
+                                }
+                                break;
+                            }
+                    }
+                }
             }
             else
             {
@@ -182,11 +252,15 @@ public class PlayerInput : MonoBehaviour
                 tile.SetInteractable(false);
             }
         }
+
+        if (action == ActionType.Move)
+            GridManager.Instance.reachableMoveTiles = reachable;
     }
+
 
     void ClearAllHighlights()
     {
-        foreach (var tile in FindObjectsOfType<Tile>())
+        foreach (var tile in FindObjectsByType<Tile>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
         {
             tile.Highlight(Color.white); // reset to default
         }

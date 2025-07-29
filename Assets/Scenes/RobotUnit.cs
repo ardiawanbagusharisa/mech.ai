@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class RobotUnit : MonoBehaviour
 {
@@ -15,15 +16,33 @@ public class RobotUnit : MonoBehaviour
     private float moveHeight = 1f;
 
     public Material[] colorMaterials;
+    public Sprite[] sprites;
+    public GameObject standee;
+    public GameObject sprite;
 
     public void Start()
     {
         // Debug movement
         //MoveTo(new Vector2Int(5, 5));
     }
+    private void LateUpdate()
+    {
+        // Billboard for the robot sprite, the x axis should also follow
+        if (sprite != null)
+        {
+            Vector3 cameraPos = Camera.main.transform.position;
+            Vector3 lookDirection = cameraPos - transform.position;
+            lookDirection.y = 0; // Keep it horizontal
+            sprite.transform.rotation = Quaternion.LookRotation(lookDirection);
+        }
+
+
+    }
 
     public void SetColor() {
         GetComponent<Renderer>().material = colorMaterials[teamId];
+        standee.GetComponent<Renderer>().material = colorMaterials[teamId];
+        sprite.GetComponent<SpriteRenderer>().sprite = sprites[teamId];
     }
     public void ResetActions()
     {
@@ -41,36 +60,68 @@ public class RobotUnit : MonoBehaviour
         Debug.Log($"Placed robot at grid position {gridPos} with world position {transform.position}");
     }
 
-    public void MoveTo(Vector2Int newGridPos)
+    public void MoveTo(Vector2Int targetGridPos, HashSet<Vector2Int> allowedTiles)
     {
-        if (isMoving || !canMove) return;
+        List<Vector2Int> path = AStarPathfinder.FindPath(gridPos, targetGridPos, allowedTiles);
 
-        Vector3 targetWorld = GridManager.Instance.GetWorldPosition(newGridPos);
-        targetWorld.y = moveHeight;
-        StartCoroutine(MoveToPosition(targetWorld, newGridPos));
+        if (path != null && path.Count > 1) // Exclude current tile
+            StartCoroutine(MoveAlongPath(path));
+        else
+            Debug.LogWarning("No path found!");
     }
 
-    private IEnumerator MoveToPosition(Vector3 targetPosition, Vector2Int newGridPos)
+    private IEnumerator MoveAlongPath(List<Vector2Int> path)
     {
         isMoving = true;
 
-        Vector3 start = transform.position;
-        float elapsed = 0f;
-
-        while (elapsed < moveDuration)
+        List<Vector3> worldPath = new List<Vector3>();
+        foreach (var grid in path)
         {
-            transform.position = Vector3.Lerp(start, targetPosition, elapsed / moveDuration);
-            elapsed += Time.deltaTime;
-            yield return null;
+            Vector3 pos = GridManager.Instance.GetWorldPosition(grid);
+            worldPath.Add(new Vector3(pos.x, moveHeight, pos.z));
         }
 
-        transform.position = targetPosition;
-        gridPos = newGridPos;
+        float totalDistance = 0f;
+        for (int i = 0; i < worldPath.Count - 1; i++)
+            totalDistance += Vector3.Distance(worldPath[i], worldPath[i + 1]);
+
+        float speed = path.Count * totalDistance / (moveDuration * path.Count); // control overall speed
+        int currentIndex = 0;
+
+        Vector3 currentStart = worldPath[0];
+        Vector3 currentEnd = worldPath[1];
+
+        while (currentIndex < worldPath.Count - 1)
+        {
+            float segmentLength = Vector3.Distance(currentStart, currentEnd);
+            float segmentProgress = 0f;
+
+            while (segmentProgress < 1f)
+            {
+                segmentProgress += Time.deltaTime * speed / segmentLength;
+                transform.position = Vector3.Lerp(currentStart, currentEnd, segmentProgress);
+                yield return null;
+            }
+
+            currentIndex++;
+            currentStart = worldPath[currentIndex];
+            if (currentIndex + 1 < worldPath.Count)
+                currentEnd = worldPath[currentIndex + 1];
+
+            Camera.main.GetComponent<CameraController>().HandleFocusOnRobot();
+        }
+
+        // Finalize position
+        transform.position = worldPath[^1]; // C# 8 syntax for last element
+        gridPos = path[^1];
+
         canMove = false;
         isMoving = false;
 
-        Debug.Log($"Finished moving to {gridPos} at {transform.position}");
+        Debug.Log($"Finished moving to {gridPos}.");
     }
+
+
 
     public bool IsMoving() => isMoving;
 
