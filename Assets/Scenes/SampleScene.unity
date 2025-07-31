@@ -1349,7 +1349,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2004392931}
   - component: {fileID: 2004392930}
-  - component: {fileID: 2004392929}
   m_Layer: 0
   m_Name: GridManager
   m_TagString: Untagged
@@ -1357,21 +1356,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2004392929
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2004392928}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 684f5aa7e6bb57640935126c58f169b8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  tilePrefab: {fileID: 1892892064468747212, guid: 0e9cd8ae14aa7c647bed9b2cf8c106de, type: 3}
-  width: 15
-  height: 15
 --- !u!114 &2004392930
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1384,6 +1368,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef36bfe71b26a1b4ab91a17d889059e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  tilePrefab: {fileID: 1892892064468747212, guid: 0e9cd8ae14aa7c647bed9b2cf8c106de, type: 3}
+  width: 10
+  height: 10
 --- !u!4 &2004392931
 Transform:
   m_ObjectHideFlags: 0

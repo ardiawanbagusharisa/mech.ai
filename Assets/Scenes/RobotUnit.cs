@@ -35,8 +35,6 @@ public class RobotUnit : MonoBehaviour
             lookDirection.y = 0; // Keep it horizontal
             sprite.transform.rotation = Quaternion.LookRotation(lookDirection);
         }
-
-
     }
 
     public void SetColor() {
@@ -56,8 +54,6 @@ public class RobotUnit : MonoBehaviour
         Vector3 worldPos = GridManager.Instance.GetWorldPosition(gridPos);
         worldPos.y = moveHeight;
         transform.position = worldPos;
-
-        Debug.Log($"Placed robot at grid position {gridPos} with world position {transform.position}");
     }
 
     public void MoveTo(Vector2Int targetGridPos, HashSet<Vector2Int> allowedTiles)

@@ -71,7 +71,7 @@ public class CameraController : MonoBehaviour
         smoothTargetPitch = currentPitch;
         smoothTargetOrbitDistance = orbitDistance;
 
-        CenterOnGrid();
+        //CenterOnGrid();
 
         //UpdateCameraPositionAndRotation();
     }

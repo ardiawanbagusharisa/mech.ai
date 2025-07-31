@@ -248,7 +248,7 @@ public class PlayerInput : MonoBehaviour
             }
             else
             {
-                tile.Highlight(Color.white);
+                tile.Highlight(tile.defaultColor);
                 tile.SetInteractable(false);
             }
         }
@@ -257,12 +257,11 @@ public class PlayerInput : MonoBehaviour
             GridManager.Instance.reachableMoveTiles = reachable;
     }
 
-
     void ClearAllHighlights()
     {
         foreach (var tile in FindObjectsByType<Tile>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
         {
-            tile.Highlight(Color.white); // reset to default
+            tile.Highlight(tile.defaultColor);
         }
     }
 }

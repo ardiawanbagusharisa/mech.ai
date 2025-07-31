@@ -66,13 +66,16 @@ public class GameManager : MonoBehaviour
 
     void SpawnRobots(RobotUnit[] robots, Vector2Int[] spawnPoints, int teamId)
     {
+        string log = "";
         for (int i = 0; i < robots.Length && i < spawnPoints.Length; i++)
         {
             robots[i].teamId = teamId;
             robots[i].gridPos = spawnPoints[i];
             robots[i].SetColor();
             robots[i].PlaceAtGridPosition(); 
+            log += $"Spawned team {teamId} robot {robots[i].name} at {robots[i].gridPos}\n";
         }
+        Debug.Log(log);
     }
 
 
@@ -99,14 +102,16 @@ public class GameManager : MonoBehaviour
 
     public void EndTurnEarly()
     {
-        TryAdvanceTurn();
+        ForceSkipTurn();
+        //TryAdvanceTurn();
     }
 
     public void EndTurn()
     {
         Debug.Log("Ending turn manually.");
-        currentRobotIndex++; 
-        TryAdvanceTurn();
+        //currentRobotIndex++; 
+        //TryAdvanceTurn();
+        ForceSkipTurn();
     }
 
     public void ForceSkipTurn()
